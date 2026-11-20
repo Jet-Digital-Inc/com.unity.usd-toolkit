@@ -2796,19 +2796,39 @@ namespace Unity.USDToolkit
             return bounds;
         }
 
+        // The children of each node by name, per import root. Transform.Find scans a node's children, so a
+        // node with n children cost n^2/2 name compares to build (63,102 seats under one family node: 2e9).
+        // A node's existing children are read once, the first time a path passes through it; the first child
+        // of a name wins, as with Find.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Transform, Dictionary<Transform, Dictionary<string, Transform>>>
+            s_ChildrenByName = new System.Runtime.CompilerServices.ConditionalWeakTable<Transform, Dictionary<Transform, Dictionary<string, Transform>>>();
+
         private static GameObject CreatePrimPathObject(Transform root, string primPath)
         {
+            Dictionary<Transform, Dictionary<string, Transform>> nodes =
+                s_ChildrenByName.GetValue(root, _ => new Dictionary<Transform, Dictionary<string, Transform>>());
             string[] segments = primPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             Transform current = root;
             foreach (string segment in segments)
             {
+                if (!nodes.TryGetValue(current, out Dictionary<string, Transform> children))
+                {
+                    children = new Dictionary<string, Transform>(StringComparer.Ordinal);
+                    foreach (Transform existing in current)
+                    {
+                        children.TryAdd(existing.name, existing);
+                    }
+
+                    nodes[current] = children;
+                }
+
                 string objectName = SanitizeObjectName(segment);
-                Transform child = current.Find(objectName);
-                if (child == null)
+                if (!children.TryGetValue(objectName, out Transform child) || child == null)
                 {
                     var childObject = new GameObject(objectName);
                     childObject.transform.SetParent(current, false);
                     child = childObject.transform;
+                    children[objectName] = child;
                 }
 
                 current = child;

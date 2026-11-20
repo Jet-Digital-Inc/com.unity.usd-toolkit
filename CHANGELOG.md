@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1-exp.1-advent.1] - 2026-11-20 (Jet-Digital-Inc fork)
+
+### Fixed
+
+- **Hierarchy build is quadratic in a node's child count**
+  `CreatePrimPathObject` found each path segment with `Transform.Find`, which scans the node's
+  children, so a node with n children cost n^2/2 name compares. A Revit export with 63,102 seats
+  under one family node spent 116 s of main-thread time in the Hierarchy stage. The children of each
+  node are now kept by name per import root (read once from the node, then kept up to date), and
+  the same stage takes 8 s. The first child of a name still wins, as with `Find`.
+
 ## [0.8.1-exp.1] - 2026-10-22
 
 ### Added
