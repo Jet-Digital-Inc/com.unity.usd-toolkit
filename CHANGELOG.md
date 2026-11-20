@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1-exp.1-advent.2] - 2026-11-20 (Jet-Digital-Inc fork)
+
+### Fixed
+
+- **Transparent materials drew opaque in players**
+  A material with opacity below 1 got straight alpha blending with only the
+  `_SURFACE_TYPE_TRANSPARENT` keyword. URP 17 Lit outputs alpha only in its transparent variants,
+  and a player that has no variant with exactly those keywords picks the closest one, which can
+  be opaque: every glass pane drew solid. Opacity now follows UsdPreviewSurface's default
+  `transparent` mode, as Hydra Storm draws it: diffuse scaled by opacity, specular and emission
+  at full weight, composited premultiplied. That is URP Alpha blending with Preserve Specular
+  (`_ALPHAPREMULTIPLY_ON`, One / OneMinusSrcAlpha), the variant URP's own material editor makes,
+  and Built-in Standard's Transparent mode. A test player measured panes of opacity 0.25 and 0.5
+  at 0.22 and 0.48 (the rest is the kept reflection); before, both were opaque.
+
 ## [0.8.1-exp.1-advent.1] - 2026-11-20 (Jet-Digital-Inc fork)
 
 ### Fixed

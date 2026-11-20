@@ -4729,18 +4729,31 @@ namespace Unity.USDToolkit
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
         }
 
+        // UsdPreviewSurface opacity in its default "transparent" mode: opacity scales the diffuse
+        // response only, while specular and emission stay at full weight (glass keeps its
+        // reflections), and the result is composited premultiplied. Hydra Storm does the same.
+        // URP's match is Alpha blending with Preserve Specular: the shader multiplies the diffuse
+        // by alpha (_ALPHAPREMULTIPLY_ON) and the blend is One / OneMinusSrcAlpha; Built-in
+        // Standard's Transparent mode is the same keyword and blend. The keyword matters: URP 17
+        // Lit outputs alpha only in its _SURFACE_TYPE_TRANSPARENT variants, and a material whose
+        // keywords match no variant in a player gets the closest one, which can be an opaque
+        // variant, so the surface drew solid.
         private static void SetAlphaBlend(Material material)
         {
             SetMaterialFloat(material, "_Surface", 1f); // URP: Transparent
             SetMaterialFloat(material, "_Blend", 0f);   // URP: Alpha
+            SetMaterialFloat(material, "_BlendModePreserveSpecular", 1f);
             SetMaterialFloat(material, "_AlphaClip", 0f);
-            SetMaterialFloat(material, "_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            SetMaterialFloat(material, "_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
             SetMaterialFloat(material, "_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            SetMaterialFloat(material, "_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            SetMaterialFloat(material, "_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             SetMaterialFloat(material, "_ZWrite", 0f);
             SetMaterialFloat(material, "_Mode", 3f); // Built-in Standard: Transparent
             material.DisableKeyword("_ALPHATEST_ON");
+            material.DisableKeyword("_ALPHABLEND_ON");           // Built-in Standard's Fade mode
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); // URP
-            material.EnableKeyword("_ALPHABLEND_ON");            // Built-in Standard
+            material.EnableKeyword("_ALPHAPREMULTIPLY_ON");      // URP Preserve Specular, Built-in Transparent
             material.SetOverrideTag("RenderType", "Transparent");
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             // URP and Built-in draw a blended surface into the shadow map as if it were opaque, so
